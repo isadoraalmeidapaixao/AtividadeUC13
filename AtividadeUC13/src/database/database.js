@@ -1,7 +1,6 @@
 // src/database/database.js
 import * as SQLite from 'expo-sqlite';
 
-// Abre ou cria o banco de dados localmente
 const db = SQLite.openDatabaseSync('tasks_manager.db');
 
 export const initDatabase = async () => {
@@ -13,6 +12,7 @@ export const initDatabase = async () => {
         title TEXT NOT NULL,
         description TEXT,
         category TEXT NOT NULL,
+        priority TEXT NOT NULL,
         status TEXT NOT NULL
       );
     `);

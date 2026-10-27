@@ -4,60 +4,52 @@ import { Task } from '../models/Task';
 
 export class TaskRepository {
 
-    // CREATE (Inclusão)
     static async create(taskInstance) {
         try {
-            const { title, description, category, status } = taskInstance.toPlainObject();
+            const { title, description, category, priority, status } = taskInstance.toPlainObject();
             const statement = await db.prepareAsync(
-                'INSERT INTO tasks (title, description, category, status) VALUES (?, ?, ?, ?)'
+                'INSERT INTO tasks (title, description, category, priority, status) VALUES (?, ?, ?, ?, ?)'
             );
             try {
-                const result = await statement.executeAsync([title, description, category, status]);
+                const result = await statement.executeAsync([title, description, category, priority, status]);
                 return result.lastInsertRowId;
             } finally {
                 await statement.finalizeAsync();
             }
         } catch (error) {
-            throw new Error('Erro ao salvar a tarefa no banco de dados: ' + error.message);
+            throw new Error('Erro ao salvar a tarefa: ' + error.message);
         }
     }
 
-    // READ (Consulta com Filtros e Ordenação)
-    static async findAll(filterCategory = null, filterStatus = null) {
+    // Consulta com ordenação automática por Categoria e Prioridade
+    static async findAll() {
         try {
-            let query = 'SELECT * FROM tasks WHERE 1=1';
-            const params = [];
-
-            if (filterCategory) {
-                query += ' AND category = ?';
-                params.push(filterCategory);
-            }
-
-            if (filterStatus) {
-                query += ' AND status = ?';
-                params.push(filterStatus);
-            }
-
-            query += ' ORDER BY id DESC';
-
-            const allRows = await db.getAllAsync(query, params);
-
-            // Mapeia os registros do banco de volta para instâncias da classe Task
-            return allRows.map(row => new Task(row.title, row.description, row.category, row.status, row.id));
+            // Ordena alfabeticamente por Categoria, depois por Prioridade (customizada) e ID
+            const query = `
+        SELECT * FROM tasks 
+        ORDER BY category ASC, 
+        CASE priority 
+          WHEN 'Alta' THEN 1 
+          WHEN 'Média' THEN 2 
+          WHEN 'Baixa' THEN 3 
+        END ASC, 
+        id DESC
+      `;
+            const allRows = await db.getAllAsync(query);
+            return allRows.map(row => new Task(row.title, row.description, row.category, row.priority, row.status, row.id));
         } catch (error) {
             throw new Error('Erro ao consultar as tarefas: ' + error.message);
         }
     }
 
-    // UPDATE (Alteração)
     static async update(taskInstance) {
         try {
-            const { id, title, description, category, status } = taskInstance.toPlainObject();
+            const { id, title, description, category, priority, status } = taskInstance.toPlainObject();
             const statement = await db.prepareAsync(
-                'UPDATE tasks SET title = ?, description = ?, category = ?, status = ? WHERE id = ?'
+                'UPDATE tasks SET title = ?, description = ?, category = ?, priority = ?, status = ? WHERE id = ?'
             );
             try {
-                await statement.executeAsync([title, description, category, status, id]);
+                await statement.executeAsync([title, description, category, priority, status, id]);
             } finally {
                 await statement.finalizeAsync();
             }
@@ -66,7 +58,6 @@ export class TaskRepository {
         }
     }
 
-    // DELETE (Exclusão)
     static async delete(id) {
         try {
             const statement = await db.prepareAsync('DELETE FROM tasks WHERE id = ?');
