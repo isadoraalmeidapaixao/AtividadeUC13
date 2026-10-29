@@ -1,4 +1,3 @@
-// src/repositories/TaskRepository.js
 import db from '../database/database';
 import { Task } from '../models/Task';
 
@@ -17,28 +16,36 @@ export class TaskRepository {
                 await statement.finalizeAsync();
             }
         } catch (error) {
-            throw new Error('Erro ao salvar a tarefa: ' + error.message);
+            throw new Error('Erro ao salvar no banco: ' + error.message);
         }
     }
 
-    // Consulta com ordenação automática por Categoria e Prioridade
-    static async findAll() {
+    static async findAll(searchQuery = '', statusFilter = 'todos') {
         try {
-            // Ordena alfabeticamente por Categoria, depois por Prioridade (customizada) e ID
-            const query = `
-        SELECT * FROM tasks 
-        ORDER BY category ASC, 
+            let sql = 'SELECT * FROM tasks WHERE 1=1';
+            const params = [];
+
+            if (searchQuery.trim() !== '') {
+                sql += ' AND (title LIKE ? OR description LIKE ?)';
+                params.push(`%${searchQuery}%`, `%${searchQuery}%`);
+            }
+
+            if (statusFilter !== 'todos') {
+                sql += ' AND status = ?';
+                params.push(statusFilter);
+            }
+
+            sql += ` ORDER BY 
         CASE priority 
           WHEN 'Alta' THEN 1 
           WHEN 'Média' THEN 2 
           WHEN 'Baixa' THEN 3 
-        END ASC, 
-        id DESC
-      `;
-            const allRows = await db.getAllAsync(query);
+        END ASC, id DESC`;
+
+            const allRows = await db.getAllAsync(sql, params);
             return allRows.map(row => new Task(row.title, row.description, row.category, row.priority, row.status, row.id));
         } catch (error) {
-            throw new Error('Erro ao consultar as tarefas: ' + error.message);
+            throw new Error('Erro ao buscar tarefas: ' + error.message);
         }
     }
 
@@ -54,7 +61,7 @@ export class TaskRepository {
                 await statement.finalizeAsync();
             }
         } catch (error) {
-            throw new Error('Erro ao atualizar a tarefa: ' + error.message);
+            throw new Error('Erro ao atualizar tarefa: ' + error.message);
         }
     }
 
@@ -67,7 +74,7 @@ export class TaskRepository {
                 await statement.finalizeAsync();
             }
         } catch (error) {
-            throw new Error('Erro ao excluir a tarefa: ' + error.message);
+            throw new Error('Erro ao excluir tarefa: ' + error.message);
         }
     }
 }

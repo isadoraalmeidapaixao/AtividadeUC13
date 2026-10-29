@@ -1,6 +1,6 @@
-// src/models/Task.js
-export class Task {
-    #id;
+import { Entity } from './Entity';
+
+export class Task extends Entity {
     #title;
     #description;
     #category;
@@ -8,7 +8,7 @@ export class Task {
     #status;
 
     constructor(title, description, category, priority = 'Média', status = 'pendente', id = null) {
-        this.#id = id;
+        super(id);
         this.setTitle(title);
         this.setDescription(description);
         this.setCategory(category);
@@ -16,18 +16,16 @@ export class Task {
         this.setStatus(status);
     }
 
-    // Getters
-    getId() { return this.#id; }
+    // getters
     getTitle() { return this.#title; }
     getDescription() { return this.#description; }
     getCategory() { return this.#category; }
     getPriority() { return this.#priority; }
     getStatus() { return this.#status; }
 
-    // Setters com Validação
     setTitle(title) {
         if (!title || title.trim() === '') {
-            throw new Error('O título da tarefa não pode estar vazio.');
+            throw new Error('O título da tarefa é obrigatório.');
         }
         this.#title = title.trim();
     }
@@ -39,7 +37,7 @@ export class Task {
     setCategory(category) {
         const validCategories = ['Trabalho', 'Estudos', 'Pessoal', 'Outros'];
         if (!validCategories.includes(category)) {
-            throw new Error('Categoria inválida selecionada.');
+            throw new Error('Categoria inválida.');
         }
         this.#category = category;
     }
@@ -60,9 +58,10 @@ export class Task {
         this.#status = status;
     }
 
+
     toPlainObject() {
         return {
-            id: this.#id,
+            ...super.toPlainObject(),
             title: this.#title,
             description: this.#description,
             category: this.#category,

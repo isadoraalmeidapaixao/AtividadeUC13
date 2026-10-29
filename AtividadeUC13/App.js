@@ -17,10 +17,12 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('Trabalho');
   const [selectedPriority, setSelectedPriority] = useState('Média');
   const [editingId, setEditingId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('todos');
 
   const loadTasks = async () => {
     try {
-      const loadedTasks = await TaskRepository.findAll();
+      const loadedTasks = await TaskRepository.findAll(searchQuery, statusFilter);
       setTasks(loadedTasks);
     } catch (error) {
       Alert.alert('Erro', error.message);
@@ -36,19 +38,20 @@ export default function App() {
         Alert.alert('Erro Crítico', error.message);
       }
     })();
-  }, []);
+  }, [searchQuery, statusFilter]);
 
   const handleSaveTask = async () => {
     try {
       if (editingId) {
         const taskToUpdate = new Task(title, description, selectedCategory, selectedPriority, 'pendente', editingId);
         await TaskRepository.update(taskToUpdate);
-        Alert.alert('Sucesso', 'Tarefa atualizada com sucesso!');
+        Alert.alert('Sucesso', 'Tarefa atualizada!');
         setEditingId(null);
-      } else {
+      }
+      else {
         const newTask = new Task(title, description, selectedCategory, selectedPriority, 'pendente');
         await TaskRepository.create(newTask);
-        Alert.alert('Sucesso', 'Tarefa cadastrada com sucesso!');
+        Alert.alert('Sucesso', 'Tarefa cadastrada!');
       }
 
       setTitle('');
@@ -84,57 +87,48 @@ export default function App() {
   };
 
   const handleDeleteTask = (id) => {
-    Alert.alert(
-      'Excluir Tarefa',
-      'Deseja realmente excluir esta tarefa?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await TaskRepository.delete(id);
-              loadTasks();
-            } catch (error) {
-              Alert.alert('Erro', error.message);
-            }
+    Alert.alert('Excluir Tarefa', 'Deseja excluir esta tarefa?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir', style: 'destructive',
+        onPress: async () => {
+          try {
+            await TaskRepository.delete(id);
+            loadTasks();
+          } catch (error) {
+            Alert.alert('Erro', error.message);
           }
         }
-      ]
-    );
+      }
+    ]);
   };
 
+
+  const completedCount = tasks.filter(t => t.getStatus() === 'concluida').length;
+  const totalCount = tasks.length;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <Text style={styles.headerTitle}>Gerenciador de Tarefas</Text>
 
       <ScrollView contentContainerStyle={styles.scrollForm} showsVerticalScrollIndicator={false}>
+
+
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsTitle}>Status: {progressPercent}%</Text>
+          <Text style={styles.statsSubtitle}>{completedCount} de {totalCount} tarefas concluídas</Text>
+        </View>
+
+
         <View style={styles.formContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Título da tarefa *"
-            value={title}
-            onChangeText={setTitle}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Descrição (opcional)"
-            value={description}
-            onChangeText={setDescription}
-          />
+          <TextInput style={styles.input} placeholder="Título da tarefa" value={title} onChangeText={setTitle} />
+          <TextInput style={styles.input} placeholder="Descrição (opcional)" value={description} onChangeText={setDescription} />
 
           <Text style={styles.label}>Categoria:</Text>
           <View style={styles.optionsRow}>
             {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.chip, selectedCategory === cat && styles.chipSelected]}
-                onPress={() => setSelectedCategory(cat)}
-              >
+              <TouchableOpacity key={cat} style={[styles.chip, selectedCategory === cat && styles.chipSelected]} onPress={() => setSelectedCategory(cat)}>
                 <Text style={[styles.chipText, selectedCategory === cat && styles.chipTextSelected]}>{cat}</Text>
               </TouchableOpacity>
             ))}
@@ -143,32 +137,40 @@ export default function App() {
           <Text style={styles.label}>Prioridade:</Text>
           <View style={styles.optionsRow}>
             {PRIORITIES.map((prio) => (
-              <TouchableOpacity
-                key={prio}
-                style={[styles.chip, selectedPriority === prio && styles.chipPrioritySelected]}
-                onPress={() => setSelectedPriority(prio)}
-              >
+              <TouchableOpacity key={prio} style={[styles.chip, selectedPriority === prio && styles.chipPrioritySelected]} onPress={() => setSelectedPriority(prio)}>
                 <Text style={[styles.chipText, selectedPriority === prio && styles.chipTextSelected]}>{prio}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           <TouchableOpacity style={styles.saveButton} onPress={handleSaveTask}>
-            <Text style={styles.saveButtonText}>
-              {editingId ? 'Atualizar Tarefa' : 'Adicionar Tarefa'}
-            </Text>
+            <Text style={styles.saveButtonText}>{editingId ? 'Atualizar Tarefa' : 'Adicionar Tarefa'}</Text>
           </TouchableOpacity>
-
-          {editingId && (
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => { setEditingId(null); setTitle(''); setDescription(''); }}
-            >
-              <Text style={styles.cancelButtonText}>Cancelar Edição</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
+        <View style={styles.filterSection}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder=" Filtrar tarefas..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <View style={styles.filterTabs}>
+            {['todos', 'pendente', 'concluida'].map((st) => (
+              <TouchableOpacity
+                key={st}
+                style={[styles.tab, statusFilter === st && styles.activeTab]}
+                onPress={() => setStatusFilter(st)}
+              >
+                <Text style={[styles.tabText, statusFilter === st && styles.activeTabText]}>
+                  {st.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Lista Proporcional de Tarefas */}
         <FlatList
           data={tasks}
           keyExtractor={(item) => item.getId().toString()}
@@ -183,7 +185,7 @@ export default function App() {
 
                 <View style={styles.badgeRow}>
                   <View style={styles.badgeCategoryContainer}>
-                    <Text style={styles.badgeCategory}>Categoria: {item.getCategory()}</Text>
+                    <Text style={styles.badgeCategory}>📂 {item.getCategory()}</Text>
                   </View>
                   <View style={[
                     styles.badgePriorityContainer,
@@ -197,31 +199,20 @@ export default function App() {
                       item.getPriority() === 'Média' && { color: '#ef6c00' },
                       item.getPriority() === 'Baixa' && { color: '#2e7d32' },
                     ]}>
-                      Prioridade {item.getPriority()}
+                      ⚡ {item.getPriority()}
                     </Text>
                   </View>
                 </View>
               </View>
 
               <View style={styles.actionsContainer}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: '#4CAF50' }]}
-                  onPress={() => handleToggleStatus(item)}
-                >
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#4CAF50' }]} onPress={() => handleToggleStatus(item)}>
                   <Text style={styles.actionBtnText}>✓</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: '#FF9800' }]}
-                  onPress={() => handleEditPress(item)}
-                >
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FF9800' }]} onPress={() => handleEditPress(item)}>
                   <Text style={styles.actionBtnText}>✎</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: '#F44336' }]}
-                  onPress={() => handleDeleteTask(item.getId())}
-                >
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#F44336' }]} onPress={() => handleDeleteTask(item.getId())}>
                   <Text style={styles.actionBtnText}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -251,6 +242,26 @@ const styles = StyleSheet.create({
   scrollForm: {
     paddingHorizontal: 20,
     paddingBottom: 30
+  },
+
+  statsContainer: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    alignItems: 'center'
+  },
+
+  statsTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
+
+  statsSubtitle: {
+    color: '#e3f2fd',
+    fontSize: 12,
+    marginTop: 2
   },
 
   formContainer: {
@@ -314,28 +325,54 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold'
   },
-
   saveButton: {
     backgroundColor: '#007AFF',
     padding: 12, borderRadius: 6,
-    alignItems: 'center',
-    marginTop: 5
+    alignItems: 'center', marginTop: 5
   },
-
   saveButtonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 15
   },
 
-  cancelButton: {
-    marginTop: 8,
-    padding: 6,
-    alignItems: 'center'
+  filterSection: {
+    marginBottom: 15
   },
 
-  cancelButtonText: {
-    color: '#666'
+  searchInput: {
+
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8
+  },
+  filterTabs: {
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: 2,
+    borderRadius: 6
+  },
+  activeTab: {
+    backgroundColor: '#333'
+  },
+
+  tabText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#555'
+  },
+
+  activeTabText: {
+    color: '#fff'
   },
 
   card: {
@@ -345,12 +382,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: { ios: 0.2, android: 0.2 }.ios,
-    shadowRadius: 1.41
+    elevation: 2
   },
+
   cardCompleted: {
     backgroundColor: '#f1f8e9'
   },
@@ -362,7 +396,8 @@ const styles = StyleSheet.create({
 
   taskTitle: {
     fontSize: 16,
-    fontWeight: 'bold', color: '#222',
+    fontWeight: 'bold',
+    color: '#222',
     marginBottom: 3
   },
 
@@ -374,8 +409,7 @@ const styles = StyleSheet.create({
   taskDesc: {
     fontSize: 13,
     color: '#555',
-    marginBottom: 10,
-    lineHeight: 18
+    marginBottom: 10
   },
 
   badgeRow: {
@@ -407,12 +441,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold'
   },
-
   actionsContainer: {
     justifyContent: 'space-between',
     alignItems: 'center'
   },
-
   actionBtn: {
     width: 34,
     height: 34,
@@ -421,7 +453,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 3
   },
-
   actionBtnText: {
     color: '#fff',
     fontWeight: 'bold',
