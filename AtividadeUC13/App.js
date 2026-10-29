@@ -183,7 +183,7 @@ export default function App() {
 
                 <View style={styles.badgeRow}>
                   <View style={styles.badgeCategoryContainer}>
-                    <Text style={styles.badgeCategory}>📂 {item.getCategory()}</Text>
+                    <Text style={styles.badgeCategory}>Categoria: {item.getCategory()}</Text>
                   </View>
                   <View style={[
                     styles.badgePriorityContainer,
@@ -197,7 +197,7 @@ export default function App() {
                       item.getPriority() === 'Média' && { color: '#ef6c00' },
                       item.getPriority() === 'Baixa' && { color: '#2e7d32' },
                     ]}>
-                      ⚡ {item.getPriority()}
+                      Prioridade {item.getPriority()}
                     </Text>
                   </View>
                 </View>
