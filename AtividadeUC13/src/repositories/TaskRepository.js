@@ -20,6 +20,7 @@ export class TaskRepository {
         }
     }
 
+    // filtrar as tarefas
     static async findAll(searchQuery = '', statusFilter = 'todos') {
         try {
             let sql = 'SELECT * FROM tasks WHERE 1=1';
